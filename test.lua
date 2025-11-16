@@ -13,9 +13,7 @@ local function createElement(className, properties)
         elseif type(value) == "table" and value.__isEnum then
             element[property] = value
         else
-            pcall(function()
-                element[property] = value
-            end)
+            element[property] = value
         end
     end
     return element
@@ -29,7 +27,6 @@ local ScreenGui = createElement("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 })
 
---// Main Frame
 local MainFrame = createElement("Frame", {
     Size = UDim2.new(0, 550, 0, 400),
     AnchorPoint = Vector2.new(0.5, 0.5),
@@ -37,6 +34,7 @@ local MainFrame = createElement("Frame", {
     BackgroundColor3 = Color3.fromRGB(20, 20, 20),
     BorderSizePixel = 0,
     Active = true,
+    Visible = false,
     Parent = ScreenGui
 })
 
@@ -45,7 +43,6 @@ createElement("UICorner", {
     Parent = MainFrame
 })
 
---// Top Bar
 local TopBar = createElement("Frame", {
     Size = UDim2.new(1, 0, 0, 40),
     BackgroundColor3 = Color3.fromRGB(30, 30, 30),
@@ -58,10 +55,9 @@ createElement("UICorner", {
     Parent = TopBar
 })
 
---// Title
 local Title = createElement("TextLabel", {
     Text = "🛠️ Advanced Tool UI",
-    Size = UDim2.new(1, -90, 1, 0),
+    Size = UDim2.new(1, -160, 1, 0),
     Position = UDim2.new(0, 15, 0, 0),
     BackgroundTransparency = 1,
     TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -71,7 +67,6 @@ local Title = createElement("TextLabel", {
     Parent = TopBar
 })
 
---// Close Button
 local CloseBtn = createElement("TextButton", {
     Size = UDim2.new(0, 40, 0, 40),
     Position = UDim2.new(1, -40, 0, 0),
@@ -83,7 +78,6 @@ local CloseBtn = createElement("TextButton", {
     Parent = TopBar
 })
 
---// Minimize Button
 local MinBtn = createElement("TextButton", {
     Size = UDim2.new(0, 40, 0, 40),
     Position = UDim2.new(1, -80, 0, 0),
@@ -95,60 +89,72 @@ local MinBtn = createElement("TextButton", {
     Parent = TopBar
 })
 
---// Tab Container
-local TabContainer = createElement("Frame", {
-    Size = UDim2.new(0, 130, 1, -40),
-    Position = UDim2.new(0, 0, 0, 40),
-    BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-    BorderSizePixel = 0,
-    Parent = MainFrame
+local RejoinBtn = createElement("TextButton", {
+    Size = UDim2.new(0, 40, 0, 40),
+    Position = UDim2.new(1, -120, 0, 0),
+    Text = "🔄",
+    Font = Enum.Font.GothamBold,
+    TextSize = 18,
+    TextColor3 = Color3.fromRGB(180, 180, 180),
+    BackgroundTransparency = 1,
+    Parent = TopBar
 })
 
-createElement("UICorner", {
-    CornerRadius = UDim.new(0, 8),
-    Parent = TabContainer
-})
-
---// Pages Container
-local PagesContainer = createElement("Frame", {
-    Size = UDim2.new(1, -130, 1, -40),
-    Position = UDim2.new(0, 130, 0, 40),
-    BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-    BorderSizePixel = 0,
-    ClipsDescendants = true,
-    Parent = MainFrame
+local ToggleUIBtn = createElement("TextButton", {
+    Size = UDim2.new(0, 40, 0, 40),
+    Position = UDim2.new(1, -160, 0, 0),
+    Text = "🔍",
+    Font = Enum.Font.GothamBold,
+    TextSize = 18,
+    TextColor3 = Color3.fromRGB(180, 180, 180),
+    BackgroundTransparency = 1,
+    Parent = TopBar
 })
 
 --// Functions
 local function setupHoverEffects()
-    -- Close Button Hover Effects
-    CloseBtn.MouseEnter:Connect(function()
-        pcall(function()
-            TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 100, 100)}):Play()
+    local function createHoverEffect(button, hoverColor, leaveColor)
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {TextColor3 = hoverColor}):Play()
         end)
-    end)
-    
-    CloseBtn.MouseLeave:Connect(function()
-        pcall(function()
-            TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200, 80, 80)}):Play()
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {TextColor3 = leaveColor}):Play()
         end)
-    end)
-    
-    -- Minimize Button Hover Effects
-    MinBtn.MouseEnter:Connect(function()
-        pcall(function()
-            TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(220, 220, 220)}):Play()
-        end)
-    end)
-    
-    MinBtn.MouseLeave:Connect(function()
-        pcall(function()
-            TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
-        end)
-    end)
+    end
+
+    createHoverEffect(CloseBtn, Color3.fromRGB(255, 100, 100), Color3.fromRGB(200, 80, 80))
+    createHoverEffect(MinBtn, Color3.fromRGB(220, 220, 220), Color3.fromRGB(180, 180, 180))
+    createHoverEffect(RejoinBtn, Color3.fromRGB(220, 220, 220), Color3.fromRGB(180, 180, 180))
+    createHoverEffect(ToggleUIBtn, Color3.fromRGB(220, 220, 220), Color3.fromRGB(180, 180, 180))
 end
 
---// Tabs & Pages Data
+local function toggleUI()
+    if MainFrame.Visible then
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        wait(0.3)
+        MainFrame.Visible = false
+    else
+        MainFrame.Visible = true
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    end
+end
+
+local function rejoin()
+    game:GetService("TeleportService"):Teleport(game.PlaceId)
+end
+
+local function openControl()
+    if not MainFrame.Visible then
+        MainFrame.Visible = true
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    end
+end
+
+--// Button Connections
+RejoinBtn.MouseButton1Click:Connect(rejoin)
+ToggleUIBtn.MouseButton1Click:Connect(toggleUI)
+
+--// Tabs and Pages
 local tabs = {"Teleport", "Tools", "Exploit", "Scripts"}
 local pagesData = {
     Teleport = {
@@ -197,7 +203,6 @@ local pagesData = {
     }
 }
 
---// Page Management
 local tabButtons = {}
 local pageFrames = {}
 local currentPage = "Teleport"
@@ -244,39 +249,28 @@ local function createPage(pageName)
             Parent = btn
         })
 
-        -- Button hover effects
         btn.MouseEnter:Connect(function()
-            pcall(function()
-                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
-            end)
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
         end)
         
         btn.MouseLeave:Connect(function()
-            pcall(function()
-                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
-            end)
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
         end)
         
         btn.MouseButton1Click:Connect(function()
-            pcall(function()
-                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
-                wait(0.1)
-                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
-                pcall(data[2])
-            end)
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
+            wait(0.1)
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
+            pcall(data[2])
         end)
     end
 
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        pcall(function()
-            page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
-        end)
+        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
     end)
 end
 
 local function createTabButton(tabName, index)
-    if tabButtons[tabName] then return end
-    
     local tabBtn = createElement("TextButton", {
         Size = UDim2.new(1, -10, 0, 45),
         Position = UDim2.new(0, 5, 0, 5 + (index - 1) * 50),
@@ -295,112 +289,45 @@ local function createTabButton(tabName, index)
     })
 
     tabBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            if currentPage == tabName then return end
-            
-            local oldPage = pageFrames[currentPage]
-            if oldPage then 
-                oldPage.Visible = false 
-            end
-            
-            currentPage = tabName
-            
-            for _, btn in pairs(tabButtons) do
-                btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-                btn.TextColor3 = Color3.fromRGB(180, 180, 180)
-            end
-            
-            tabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            
-            createPage(tabName)
-            local page = pageFrames[tabName]
-            page.Visible = true
-        end)
+        if currentPage == tabName then return end
+        
+        local oldPage = pageFrames[currentPage]
+        if oldPage then 
+            oldPage.Visible = false 
+        end
+        
+        currentPage = tabName
+        
+        for _, btn in pairs(tabButtons) do
+            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        end
+        
+        tabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
+        createPage(tabName)
+        local page = pageFrames[tabName]
+        page.Visible = true
     end)
 
     tabButtons[tabName] = tabBtn
 end
 
 local function initializeTabs()
-    pcall(function()
-        for i, tab in ipairs(tabs) do 
-            createTabButton(tab, i) 
-        end
-        
-        createPage("Teleport")
-        tabButtons["Teleport"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        tabButtons["Teleport"].TextColor3 = Color3.fromRGB(255, 255, 255)
-        pageFrames["Teleport"].Visible = true
-    end)
+    for i, tab in ipairs(tabs) do 
+        createTabButton(tab, i) 
+    end
+    
+    createPage("Teleport")
+    tabButtons["Teleport"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    tabButtons["Teleport"].TextColor3 = Color3.fromRGB(255, 255, 255)
+    pageFrames["Teleport"].Visible = true
 end
 
---// Connections
-local function setupDragging()
-    local dragging, dragStart, startPos
-    
-    TopBar.InputBegan:Connect(function(input)
-        pcall(function()
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-                dragStart = input.Position
-                startPos = MainFrame.Position
-            end
-        end)
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        pcall(function()
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(
-                    startPos.X.Scale,
-                    startPos.X.Offset + delta.X,
-                    startPos.Y.Scale,
-                    startPos.Y.Offset + delta.Y
-                )
-            end
-        end)
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        pcall(function()
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-    end)
-end
-
-local function setupWindowControls()
-    local minimized = false
-    
-    -- Minimize/Maximize
-    MinBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            minimized = not minimized
-            if minimized then
-                TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                                   {Size = UDim2.new(0, 0, 1, -40)}):Play()
-            else
-                TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                                   {Size = UDim2.new(1, -130, 1, -40)}):Play()
-            end
-        end)
-    end)
-    
-    -- Close
-    CloseBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-            wait(0.3)
-            ScreenGui:Destroy()
-        end)
-    end)
-end
-
---// Initialize
+--// Initialization
 setupHoverEffects()
 initializeTabs()
-setupDragging()
-setupWindowControls()
+
+--// Open Control on Script Load
+openControl()
