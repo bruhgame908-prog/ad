@@ -60,7 +60,7 @@ local Title = createElement("TextLabel", {
     Text = "🛠️ Advanced Tool UI",
     Size = UDim2.new(1, -90, 1, 0),
     Position = UDim2.new(0, 15, 0, 0),
-    BackgroundTransparency = 1,
+    BackgroundTransparency = 0.5,
     TextColor3 = Color3.fromRGB(255, 255, 255),
     Font = Enum.Font.GothamBold,
     TextSize = 16,
@@ -332,7 +332,8 @@ local function initializeTabs()
     end
     
     createPage("Teleport")
-    tabButtons["Teleport"].TextColor3 = Color3.fromRGB(50, 50, 50)
+    tabButtons["Teleport"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    tabButtons["Teleport"].TextColor3 = Color3.fromRGB(255, 255, 255)
     pageFrames["Teleport"].Visible = true
 end
 
@@ -344,13 +345,19 @@ local function setupDragging()
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
+            startPos = MainFrame.Position
         end
     end)
     
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(MainFrame.Position.X.Scale, startPos.X.Offset + delta.X, MainFrame.Position.Y.Scale, startPos.Y.Offset + delta.Y)
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
         end
     end)
     
@@ -369,10 +376,10 @@ local function setupWindowControls()
         minimized = not minimized
         if minimized then
             TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                           {Size = UDim2.new(0, 0, 1, -40)}):Play()
+                               {Size = UDim2.new(0, 0, 1, -40)}):Play()
         else
             TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                           {Size = UDim2.new(1, -130, 1, -40)}):Play()
+                               {Size = UDim2.new(1, -130, 1, -40)}):Play()
         end
     end)
     
