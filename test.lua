@@ -34,7 +34,7 @@ local MainFrame = createElement("Frame", {
     BackgroundColor3 = Color3.fromRGB(20, 20, 20),
     BorderSizePixel = 0,
     Active = true,
-    Visible = false,
+    Visible = false, -- Start with UI hidden
     Parent = ScreenGui
 })
 
@@ -129,14 +129,7 @@ local function setupHoverEffects()
 end
 
 local function toggleUI()
-    if MainFrame.Visible then
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-        wait(0.3)
-        MainFrame.Visible = false
-    else
-        MainFrame.Visible = true
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
-    end
+    MainFrame.Visible = not MainFrame.Visible
 end
 
 local function rejoin()
@@ -144,10 +137,8 @@ local function rejoin()
 end
 
 local function openControl()
-    if not MainFrame.Visible then
-        MainFrame.Visible = true
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
-    end
+    MainFrame.Visible = true
+    TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
 end
 
 --// Button Connections
