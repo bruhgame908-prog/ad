@@ -2,6 +2,8 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 --// Helpers
@@ -25,6 +27,26 @@ local ScreenGui = createElement("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 })
 
+--// Toggle Button (NEW - allows opening/closing UI)
+local ToggleUIBtn = createElement("TextButton", {
+    Name = "ToggleUIBtn",
+    Size = UDim2.new(0, 50, 0, 50),
+    Position = UDim2.new(0, 20, 0, 20),
+    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+    BorderSizePixel = 0,
+    Text = "☰",
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Visible = true,
+    Parent = ScreenGui
+})
+
+createElement("UICorner", {
+    CornerRadius = UDim.new(0, 8),
+    Parent = ToggleUIBtn
+})
+
 --// Main Frame
 local MainFrame = createElement("Frame", {
     Size = UDim2.new(0, 550, 0, 400),
@@ -33,7 +55,7 @@ local MainFrame = createElement("Frame", {
     BackgroundColor3 = Color3.fromRGB(20, 20, 20),
     BorderSizePixel = 0,
     Active = true,
-    Visible = false, -- Start with UI hidden
+    Visible = false,
     Parent = ScreenGui
 })
 
@@ -60,7 +82,7 @@ local Title = createElement("TextLabel", {
     Text = "🛠️ Advanced Tool UI",
     Size = UDim2.new(1, -90, 1, 0),
     Position = UDim2.new(0, 15, 0, 0),
-    BackgroundTransparency = 0.5,
+    BackgroundTransparency = 1,
     TextColor3 = Color3.fromRGB(255, 255, 255),
     Font = Enum.Font.GothamBold,
     TextSize = 16,
@@ -116,22 +138,54 @@ local PagesContainer = createElement("Frame", {
     Parent = MainFrame
 })
 
+--// NoClip Manager (FIXED - now toggles properly)
+local noclipConnection = nil
+local function toggleNoclip()
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+        -- Restore collision when disabling
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then 
+                v.CanCollide = true 
+            end
+        end
+    else
+        noclipConnection = RunService.Stepped:Connect(function()
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("BasePart") then 
+                    v.CanCollide = false 
+                end
+            end
+        end)
+    end
+end
+
 --// Functions
 local function setupHoverEffects()
-    -- Close Button Hover Effects
+    -- Toggle Button Hover
+    ToggleUIBtn.MouseEnter:Connect(function()
+        TweenService:Create(ToggleUIBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
+    end)
+    ToggleUIBtn.MouseLeave:Connect(function()
+        TweenService:Create(ToggleUIBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+    
+    -- Close Button Hover
     CloseBtn.MouseEnter:Connect(function()
         TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 100, 100)}):Play()
     end)
-    
     CloseBtn.MouseLeave:Connect(function()
         TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200, 80, 80)}):Play()
     end)
     
-    -- Minimize Button Hover Effects
+    -- Minimize Button Hover
     MinBtn.MouseEnter:Connect(function()
         TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(220, 220, 220)}):Play()
     end)
-    
     MinBtn.MouseLeave:Connect(function()
         TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
     end)
@@ -139,10 +193,13 @@ end
 
 local function toggleUI()
     MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        openControl()
+    end
 end
 
 local function rejoin()
-    game:GetService("TeleportService"):Teleport(game.PlaceId)
+    TeleportService:Teleport(game.PlaceId)
 end
 
 local function openControl()
@@ -150,43 +207,20 @@ local function openControl()
     TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
 end
 
---// Button Connections
-CloseBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    wait(0.3)
-    ScreenGui:Destroy()
-end)
-
-MinBtn.MouseButton1Click:Connect(function()
-    local minimized = not PagesContainer.Visible
-    PagesContainer.Visible = minimized
-    TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 550, 0, minimized and 40 or 400)}):Play()
-end)
-
-ToggleUIBtn.MouseButton1Click:Connect(toggleUI)
-
 --// Tabs and Pages
 local tabs = {"Teleport", "Tools", "Exploit", "Scripts"}
 local pagesData = {
     Teleport = {
-        {"NoClip", function()
-            local char = LocalPlayer.Character
-            if char then
-                for _, v in pairs(char:GetDescendants()) do
-                    if v:IsA("BasePart") then 
-                        v.CanCollide = false 
-                    end
-                end
-            end
-        end},
+        {"Toggle NoClip", toggleNoclip}, -- FIXED: Now properly toggles
         {"Teleport Tool", function()
             local tool = Instance.new("Tool")
             tool.Name = "TP Tool"
             tool.RequiresHandle = false
+            local mouse = LocalPlayer:GetMouse()
             tool.Activated:Connect(function()
                 local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    root.CFrame = CFrame.new(LocalPlayer:GetMouse().Hit.Position + Vector3.new(0, 5, 0))
+                if root and mouse.Hit then
+                    root.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 5, 0))
                 end
             end)
             tool.Parent = LocalPlayer.Backpack
@@ -194,12 +228,12 @@ local pagesData = {
     },
     Tools = {
         {"Infinite Yield", function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source "))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
         end}
     },
     Exploit = {
         {"Fly GUI", function() 
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt "))() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))() 
         end}
     },
     Scripts = {
@@ -260,7 +294,6 @@ local function createPage(pageName)
             Parent = btn
         })
 
-        -- Button hover effects
         btn.MouseEnter:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
         end)
@@ -271,7 +304,7 @@ local function createPage(pageName)
         
         btn.MouseButton1Click:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
-            wait(0.1)
+            task.wait(0.1)
             TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
             pcall(data[2])
         end)
@@ -371,31 +404,34 @@ end
 local function setupWindowControls()
     local minimized = false
     
-    -- Minimize/Maximize
     MinBtn.MouseButton1Click:Connect(function()
         minimized = not minimized
-        if minimized then
-            TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                               {Size = UDim2.new(0, 0, 1, -40)}):Play()
-        else
-            TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                               {Size = UDim2.new(1, -130, 1, -40)}):Play()
-        end
+        PagesContainer.Visible = not minimized
+        TabContainer.Visible = not minimized
+        
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                           {Size = UDim2.new(0, 550, 0, minimized and 40 or 400)}):Play()
     end)
     
-    -- Close
     CloseBtn.MouseButton1Click:Connect(function()
         TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-        wait(0.3)
+        task.wait(0.3)
         ScreenGui:Destroy()
     end)
 end
+
+--// Keybind System (NEW - Press ` or ~ to toggle)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Backquote then
+        toggleUI()
+    end
+end)
 
 --// Initialize
 setupHoverEffects()
 initializeTabs()
 setupDragging()
 setupWindowControls()
-
---// Open Control on Script Load
+ToggleUIBtn.MouseButton1Click:Connect(toggleUI) -- Connect toggle button
 openControl()
