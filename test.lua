@@ -10,8 +10,6 @@ local function createElement(className, properties)
     for property, value in pairs(properties) do
         if property == "Parent" then
             element.Parent = value
-        elseif type(value) == "table" and value.__isEnum then
-            element[property] = value
         else
             element[property] = value
         end
@@ -27,6 +25,7 @@ local ScreenGui = createElement("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 })
 
+--// Main Frame
 local MainFrame = createElement("Frame", {
     Size = UDim2.new(0, 550, 0, 400),
     AnchorPoint = Vector2.new(0.5, 0.5),
@@ -43,6 +42,7 @@ createElement("UICorner", {
     Parent = MainFrame
 })
 
+--// Top Bar
 local TopBar = createElement("Frame", {
     Size = UDim2.new(1, 0, 0, 40),
     BackgroundColor3 = Color3.fromRGB(30, 30, 30),
@@ -55,9 +55,10 @@ createElement("UICorner", {
     Parent = TopBar
 })
 
+--// Title
 local Title = createElement("TextLabel", {
     Text = "🛠️ Advanced Tool UI",
-    Size = UDim2.new(1, -160, 1, 0),
+    Size = UDim2.new(1, -90, 1, 0),
     Position = UDim2.new(0, 15, 0, 0),
     BackgroundTransparency = 1,
     TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -67,6 +68,7 @@ local Title = createElement("TextLabel", {
     Parent = TopBar
 })
 
+--// Close Button
 local CloseBtn = createElement("TextButton", {
     Size = UDim2.new(0, 40, 0, 40),
     Position = UDim2.new(1, -40, 0, 0),
@@ -78,6 +80,7 @@ local CloseBtn = createElement("TextButton", {
     Parent = TopBar
 })
 
+--// Minimize Button
 local MinBtn = createElement("TextButton", {
     Size = UDim2.new(0, 40, 0, 40),
     Position = UDim2.new(1, -80, 0, 0),
@@ -89,43 +92,49 @@ local MinBtn = createElement("TextButton", {
     Parent = TopBar
 })
 
-local RejoinBtn = createElement("TextButton", {
-    Size = UDim2.new(0, 40, 0, 40),
-    Position = UDim2.new(1, -120, 0, 0),
-    Text = "🔄",
-    Font = Enum.Font.GothamBold,
-    TextSize = 18,
-    TextColor3 = Color3.fromRGB(180, 180, 180),
-    BackgroundTransparency = 1,
-    Parent = TopBar
+--// Tab Container
+local TabContainer = createElement("Frame", {
+    Size = UDim2.new(0, 130, 1, -40),
+    Position = UDim2.new(0, 0, 0, 40),
+    BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+    BorderSizePixel = 0,
+    Parent = MainFrame
 })
 
-local ToggleUIBtn = createElement("TextButton", {
-    Size = UDim2.new(0, 40, 0, 40),
-    Position = UDim2.new(1, -160, 0, 0),
-    Text = "🔍",
-    Font = Enum.Font.GothamBold,
-    TextSize = 18,
-    TextColor3 = Color3.fromRGB(180, 180, 180),
-    BackgroundTransparency = 1,
-    Parent = TopBar
+createElement("UICorner", {
+    CornerRadius = UDim.new(0, 8),
+    Parent = TabContainer
+})
+
+--// Pages Container
+local PagesContainer = createElement("Frame", {
+    Size = UDim2.new(1, -130, 1, -40),
+    Position = UDim2.new(0, 130, 0, 40),
+    BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    Parent = MainFrame
 })
 
 --// Functions
 local function setupHoverEffects()
-    local function createHoverEffect(button, hoverColor, leaveColor)
-        button.MouseEnter:Connect(function()
-            TweenService:Create(button, TweenInfo.new(0.2), {TextColor3 = hoverColor}):Play()
-        end)
-        button.MouseLeave:Connect(function()
-            TweenService:Create(button, TweenInfo.new(0.2), {TextColor3 = leaveColor}):Play()
-        end)
-    end
-
-    createHoverEffect(CloseBtn, Color3.fromRGB(255, 100, 100), Color3.fromRGB(200, 80, 80))
-    createHoverEffect(MinBtn, Color3.fromRGB(220, 220, 220), Color3.fromRGB(180, 180, 180))
-    createHoverEffect(RejoinBtn, Color3.fromRGB(220, 220, 220), Color3.fromRGB(180, 180, 180))
-    createHoverEffect(ToggleUIBtn, Color3.fromRGB(220, 220, 220), Color3.fromRGB(180, 180, 180))
+    -- Close Button Hover Effects
+    CloseBtn.MouseEnter:Connect(function()
+        TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 100, 100)}):Play()
+    end)
+    
+    CloseBtn.MouseLeave:Connect(function()
+        TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200, 80, 80)}):Play()
+    end)
+    
+    -- Minimize Button Hover Effects
+    MinBtn.MouseEnter:Connect(function()
+        TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(220, 220, 220)}):Play()
+    end)
+    
+    MinBtn.MouseLeave:Connect(function()
+        TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
+    end)
 end
 
 local function toggleUI()
@@ -142,13 +151,19 @@ local function openControl()
 end
 
 --// Button Connections
-RejoinBtn.MouseButton1Click:Connect(rejoin)
-ToggleUIBtn.MouseButton1Click:Connect(toggleUI)
 CloseBtn.MouseButton1Click:Connect(function()
     TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
     wait(0.3)
     ScreenGui:Destroy()
 end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    local minimized = not PagesContainer.Visible
+    PagesContainer.Visible = minimized
+    TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 550, 0, minimized and 40 or 400)}):Play()
+end)
+
+ToggleUIBtn.MouseButton1Click:Connect(toggleUI)
 
 --// Tabs and Pages
 local tabs = {"Teleport", "Tools", "Exploit", "Scripts"}
@@ -245,6 +260,7 @@ local function createPage(pageName)
             Parent = btn
         })
 
+        -- Button hover effects
         btn.MouseEnter:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
         end)
@@ -316,14 +332,63 @@ local function initializeTabs()
     end
     
     createPage("Teleport")
-    tabButtons["Teleport"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    tabButtons["Teleport"].TextColor3 = Color3.fromRGB(255, 255, 255)
+    tabButtons["Teleport"].TextColor3 = Color3.fromRGB(50, 50, 50)
     pageFrames["Teleport"].Visible = true
 end
 
---// Initialization
+--// Connections
+local function setupDragging()
+    local dragging, dragStart, startPos
+    
+    TopBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(MainFrame.Position.X.Scale, startPos.X.Offset + delta.X, MainFrame.Position.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+end
+
+local function setupWindowControls()
+    local minimized = false
+    
+    -- Minimize/Maximize
+    MinBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                           {Size = UDim2.new(0, 0, 1, -40)}):Play()
+        else
+            TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                           {Size = UDim2.new(1, -130, 1, -40)}):Play()
+        end
+    end)
+    
+    -- Close
+    CloseBtn.MouseButton1Click:Connect(function()
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        wait(0.3)
+        ScreenGui:Destroy()
+    end)
+end
+
+--// Initialize
 setupHoverEffects()
 initializeTabs()
+setupDragging()
+setupWindowControls()
 
 --// Open Control on Script Load
 openControl()
