@@ -153,6 +153,11 @@ end
 --// Button Connections
 RejoinBtn.MouseButton1Click:Connect(rejoin)
 ToggleUIBtn.MouseButton1Click:Connect(toggleUI)
+CloseBtn.MouseButton1Click:Connect(function()
+    TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    wait(0.3)
+    ScreenGui:Destroy()
+end)
 
 --// Tabs and Pages
 local tabs = {"Teleport", "Tools", "Exploit", "Scripts"}
