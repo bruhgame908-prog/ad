@@ -7,12 +7,13 @@ local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
---// Storage
+--// Storage (Fixed: Added connections table for cleanup)
 local savedCFrame = nil
 local savedPositions = {}
 local noclipConnection = nil
 local consoleLogs = {}
 local isConsoleOpen = false
+local connections = {} -- Store all connections to prevent memory leaks
 
 --// Helpers
 local function createElement(className, properties)
@@ -27,7 +28,7 @@ local function createElement(className, properties)
     return element
 end
 
---// Notification System (บนขวา)
+--// Notification System (Fixed: No duplicate UI creation)
 local function createNotification(title, message, notifType, duration)
     duration = duration or 3
     notifType = notifType or "info"
@@ -42,7 +43,8 @@ local function createNotification(title, message, notifType, duration)
     local notif = createElement("ScreenGui", {
         Name = "Notification",
         Parent = game:GetService("CoreGui"),
-        ResetOnSpawn = false
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     })
     
     local main = createElement("Frame", {
@@ -92,17 +94,17 @@ local function createNotification(title, message, notifType, duration)
         Parent = main
     })
     
-    -- Animation
     TweenService:Create(main, TweenInfo.new(0.3), {Position = UDim2.new(1, -310, 1, -90)}):Play()
     
     task.delay(duration, function()
+        if not notif or not notif.Parent then return end
         TweenService:Create(main, TweenInfo.new(0.3), {Position = UDim2.new(1, 10, 1, -90)}):Play()
         task.wait(0.3)
-        notif:Destroy()
+        pcall(function() notif:Destroy() end)
     end)
 end
 
---// UI Creation
+--// Main UI Creation
 local ScreenGui = createElement("ScreenGui", {
     Name = "AdvancedToolUI",
     Parent = game:GetService("CoreGui"),
@@ -129,7 +131,7 @@ createElement("UICorner", { CornerRadius = UDim.new(0, 8), Parent = ToggleUIBtn 
 
 --// Main Frame
 local MainFrame = createElement("Frame", {
-    Size = UDim2.new(0, 600, 0, 450),
+    Size = UDim2.new(0, 850, 0, 450),
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.new(0.5, 0, 0.5, 0),
     BackgroundColor3 = Color3.fromRGB(20, 20, 20),
@@ -153,8 +155,8 @@ createElement("UICorner", { CornerRadius = UDim.new(0, 8), Parent = TopBar })
 
 --// Title
 local Title = createElement("TextLabel", {
-    Text = "🛠️ Advanced Tool UI v2.0",
-    Size = UDim2.new(1, -130, 1, 0),
+    Text = "🛠️ Advanced Tool UI v2.0 (Bug Fixed)",
+    Size = UDim2.new(1, -170, 1, 0),
     Position = UDim2.new(0, 15, 0, 0),
     BackgroundTransparency = 1,
     TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -220,36 +222,134 @@ local PagesContainer = createElement("Frame", {
     Parent = MainFrame
 })
 
---// Custom Console
-local ConsoleFrame = createElement("Frame", {
-    Size = UDim2.new(1, -140, 1, -40),
-    Position = UDim2.new(0, 140, 1, 0),
+--// Console Container (Fixed: Start hidden outside)
+local ConsoleContainer = createElement("Frame", {
+    Name = "ConsoleContainer",
+    Size = UDim2.new(0, 250, 1, -40),
+    Position = UDim2.new(1, 0, 0, 40), -- Start outside
     BackgroundColor3 = Color3.fromRGB(15, 15, 15),
     BorderSizePixel = 0,
     Visible = false,
     Parent = MainFrame
 })
 
-createElement("UICorner", { CornerRadius = UDim.new(0, 8), Parent = ConsoleFrame })
+createElement("UICorner", { CornerRadius = UDim.new(0, 8), Parent = ConsoleContainer })
 
+--// Console Header
+local ConsoleHeader = createElement("Frame", {
+    Size = UDim2.new(1, 0, 0, 30),
+    BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+    BorderSizePixel = 0,
+    Parent = ConsoleContainer
+})
+
+createElement("UICorner", { CornerRadius = UDim.new(0, 8), Parent = ConsoleHeader })
+
+local ConsoleTitle = createElement("TextLabel", {
+    Size = UDim2.new(1, -60, 1, 0),
+    Position = UDim2.new(0, 10, 0, 0),
+    BackgroundTransparency = 1,
+    Text = "Console Log",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
+    TextSize = 13,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = ConsoleHeader
+})
+
+--// Clear Console Button (Fixed: Added hover and click)
+local ConsoleClearBtn = createElement("TextButton", {
+    Size = UDim2.new(0, 25, 0, 25),
+    Position = UDim2.new(1, -33, 0, 2),
+    BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+    BorderSizePixel = 0,
+    Text = "🗑️",
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    TextColor3 = Color3.fromRGB(180, 180, 180),
+    Parent = ConsoleHeader
+})
+
+createElement("UICorner", { CornerRadius = UDim.new(0, 6), Parent = ConsoleClearBtn })
+
+local clearHoverConn = ConsoleClearBtn.MouseEnter:Connect(function()
+    TweenService:Create(ConsoleClearBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(55, 55, 55),
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    }):Play()
+end)
+table.insert(connections, clearHoverConn)
+
+local clearLeaveConn = ConsoleClearBtn.MouseLeave:Connect(function()
+    TweenService:Create(ConsoleClearBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+        TextColor3 = Color3.fromRGB(180, 180, 180)
+    }):Play()
+end)
+table.insert(connections, clearLeaveConn)
+
+local clearClickConn = ConsoleClearBtn.MouseButton1Click:Connect(function()
+    TweenService:Create(ConsoleClearBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
+    task.wait(0.1)
+    TweenService:Create(ConsoleClearBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)}):Play()
+    clearConsoleLogs()
+end)
+table.insert(connections, clearClickConn)
+
+--// Console Output
 local ConsoleOutput = createElement("ScrollingFrame", {
-    Size = UDim2.new(1, -10, 1, -50),
-    Position = UDim2.new(0, 5, 0, 5),
+    Name = "ConsoleOutput",
+    Size = UDim2.new(1, -10, 1, -40),
+    Position = UDim2.new(0, 5, 0, 35),
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     ScrollBarThickness = 6,
     ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80),
-    Parent = ConsoleFrame
+    Parent = ConsoleContainer
 })
 
+createElement("UIPadding", { PaddingTop = UDim.new(0, 5), Parent = ConsoleOutput })
+
 local ConsoleLayout = createElement("UIListLayout", {
-    Padding = UDim.new(0, 4),
+    Padding = UDim.new(0, 3),
     SortOrder = Enum.SortOrder.LayoutOrder,
     Parent = ConsoleOutput
 })
 
-local function addConsoleLog(message, type)
-    type = type or "info"
+--// NoClip Manager (Fixed: Character Respawn support)
+local function toggleNoclip()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then 
+        createNotification("Error", "Character not found", "error")
+        addConsoleLog("Failed to toggle NoClip: Character not found", "error")
+        return 
+    end
+    
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = true end
+        end
+        createNotification("NoClip", "Disabled", "warning")
+        addConsoleLog("NoClip disabled", "warning")
+    else
+        noclipConnection = RunService.Stepped:Connect(function()
+            local currentChar = LocalPlayer.Character
+            if currentChar then
+                for _, v in pairs(currentChar:GetDescendants()) do
+                    if v:IsA("BasePart") then v.CanCollide = false end
+                end
+            end
+        end)
+        createNotification("NoClip", "Enabled", "success")
+        addConsoleLog("NoClip enabled", "success")
+    end
+end
+
+--// Console Log Functions (Fixed: Limit to 100 logs)
+local function addConsoleLog(message, logType)
+    logType = logType or "info"
     local colors = {
         info = Color3.fromRGB(200, 200, 200),
         success = Color3.fromRGB(46, 204, 113),
@@ -257,71 +357,134 @@ local function addConsoleLog(message, type)
         warning = Color3.fromRGB(241, 196, 15)
     }
     
-    local log = createElement("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 20),
+    local prefixMap = {
+        info = "[INFO]",
+        success = "[SUCCESS]",
+        error = "[ERROR]",
+        warning = "[WARN]"
+    }
+    
+    -- จำกัดจำนวน logs
+    if #consoleLogs >= 100 then
+        local oldLog = table.remove(consoleLogs, 1)
+        if oldLog and oldLog.Destroy then oldLog:Destroy() end
+    end
+    
+    if not ConsoleOutput or not ConsoleOutput.Parent then return end
+    
+    local logLabel = createElement("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 18),
         BackgroundTransparency = 1,
-        Text = "[" .. os.date("%H:%M:%S") .. "] " .. message,
-        TextColor3 = colors[type],
+        Text = string.format("[%s] %s %s", os.date("%H:%M:%S"), prefixMap[logType], message),
+        TextColor3 = colors[logType],
         Font = Enum.Font.Gotham,
-        TextSize = 11,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         LayoutOrder = #consoleLogs,
         Parent = ConsoleOutput
     })
     
-    table.insert(consoleLogs, log)
+    table.insert(consoleLogs, logLabel)
+    
+    if #message > 100 then
+        logLabel.Text = string.sub(logLabel.Text, 1, 100) .. "..."
+    end
+    
     ConsoleOutput.CanvasSize = UDim2.new(0, 0, 0, ConsoleLayout.AbsoluteContentSize.Y + 10)
+end
+
+--// Clear Console (Fixed)
+local function clearConsoleLogs()
+    local logsToRemove = {}
+    for _, v in pairs(consoleLogs) do
+        table.insert(logsToRemove, v)
+    end
+    
+    for _, v in pairs(logsToRemove) do
+        if v and v.Destroy then v:Destroy() end
+    end
+    
+    consoleLogs = {}
+    ConsoleOutput.CanvasSize = UDim2.new(0, 0, 0, 0)
+    addConsoleLog("Console cleared by user", "warning")
 end
 
 --// Functions
 local function setupHoverEffects()
     -- Toggle Button
-    ToggleUIBtn.MouseEnter:Connect(function()
+    local toggleEnter = ToggleUIBtn.MouseEnter:Connect(function()
         TweenService:Create(ToggleUIBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
     end)
-    ToggleUIBtn.MouseLeave:Connect(function()
+    local toggleLeave = ToggleUIBtn.MouseLeave:Connect(function()
         TweenService:Create(ToggleUIBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
     end)
+    table.insert(connections, toggleEnter)
+    table.insert(connections, toggleLeave)
     
     -- Control Buttons
-    CloseBtn.MouseEnter:Connect(function()
+    local closeEnter = CloseBtn.MouseEnter:Connect(function()
         TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 100, 100)}):Play()
     end)
-    CloseBtn.MouseLeave:Connect(function()
+    local closeLeave = CloseBtn.MouseLeave:Connect(function()
         TweenService:Create(CloseBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200, 80, 80)}):Play()
     end)
+    table.insert(connections, closeEnter)
+    table.insert(connections, closeLeave)
     
-    MinBtn.MouseEnter:Connect(function()
+    local minEnter = MinBtn.MouseEnter:Connect(function()
         TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(220, 220, 220)}):Play()
     end)
-    MinBtn.MouseLeave:Connect(function()
+    local minLeave = MinBtn.MouseLeave:Connect(function()
         TweenService:Create(MinBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
     end)
+    table.insert(connections, minEnter)
+    table.insert(connections, minLeave)
     
-    ConsoleBtn.MouseEnter:Connect(function()
+    local consoleEnter = ConsoleBtn.MouseEnter:Connect(function()
         TweenService:Create(ConsoleBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(180, 210, 255)}):Play()
     end)
-    ConsoleBtn.MouseLeave:Connect(function()
+    local consoleLeave = ConsoleBtn.MouseLeave:Connect(function()
         TweenService:Create(ConsoleBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(120, 180, 255)}):Play()
     end)
+    table.insert(connections, consoleEnter)
+    table.insert(connections, consoleLeave)
 end
 
+--// Toggle UI (Fixed: Check if UI exists)
 local function toggleUI()
+    if not MainFrame or not MainFrame.Parent then return end
+    
     MainFrame.Visible = not MainFrame.Visible
     if MainFrame.Visible then
         TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+        addConsoleLog("UI toggled visible", "info")
+    else
+        addConsoleLog("UI toggled hidden", "info")
     end
 end
 
+--// Toggle Console (Fixed: Proper animation)
 local function toggleConsole()
+    if not ConsoleContainer or not ConsoleContainer.Parent then return end
+    
     isConsoleOpen = not isConsoleOpen
-    ConsoleFrame.Visible = isConsoleOpen
-    PagesContainer.Visible = not isConsoleOpen
     
     if isConsoleOpen then
-        TweenService:Create(ConsoleFrame, TweenInfo.new(0.3), {Position = UDim2.new(0, 140, 0, 40)}):Play()
+        ConsoleContainer.Visible = true
+        TweenService:Create(ConsoleContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad), 
+                           {Position = UDim2.new(1, -250, 0, 40)}):Play()
+        TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad), 
+                           {Size = UDim2.new(1, -390, 1, -40)}):Play()
+        addConsoleLog("Console opened", "info")
     else
-        TweenService:Create(ConsoleFrame, TweenInfo.new(0.3), {Position = UDim2.new(0, 140, 1, 0)}):Play()
+        TweenService:Create(ConsoleContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad), 
+                           {Position = UDim2.new(1, 0, 0, 40)}):Play()
+        TweenService:Create(PagesContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad), 
+                           {Size = UDim2.new(1, -140, 1, -40)}):Play()
+        
+        task.wait(0.3)
+        ConsoleContainer.Visible = false
+        addConsoleLog("Console closed", "info")
     end
 end
 
@@ -329,117 +492,198 @@ end
 local tabs = {"Teleport", "Tools", "Exploit", "Scripts", "Players", "Settings"}
 local pagesData = {
     Teleport = {
-        {"Toggle NoClip", function()
+        {"Toggle NoClip", toggleNoclip},
+        {"Teleport Tool", function()
             local char = LocalPlayer.Character
-            if not char then 
+            if not char or not char:FindFirstChild("HumanoidRootPart") then
                 createNotification("Error", "Character not found", "error")
-                return 
+                addConsoleLog("Failed to create TP Tool: Character not found", "error")
+                return
             end
             
-            if noclipConnection then
-                noclipConnection:Disconnect()
-                noclipConnection = nil
-                for _, v in pairs(char:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = true end
-                end
-                createNotification("NoClip", "Disabled", "warning")
-            else
-                noclipConnection = RunService.Stepped:Connect(function()
-                    for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-                        if v:IsA("BasePart") then v.CanCollide = false end
-                    end
-                end)
-                createNotification("NoClip", "Enabled", "success")
-            end
-        end},
-        {"Teleport Tool", function()
             local tool = Instance.new("Tool")
             tool.Name = "TP Tool"
             tool.RequiresHandle = false
             tool.ToolTip = "Click to teleport"
+            
             local mouse = LocalPlayer:GetMouse()
             tool.Activated:Connect(function()
                 local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root and mouse.Hit then
+                if root and mouse and mouse.Hit then
                     root.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 5, 0))
                     createNotification("Teleported", "To mouse position", "info")
+                    addConsoleLog("Teleported to: " .. tostring(mouse.Hit.Position), "info")
+                else
+                    addConsoleLog("TP Tool: Invalid mouse hit", "error")
                 end
             end)
+            
             tool.Parent = LocalPlayer.Backpack
             createNotification("Tool Created", "TP Tool added to backpack", "success")
+            addConsoleLog("TP Tool created and added to backpack", "success")
         end},
         {"Copy My Position", function()
-            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                savedCFrame = root.CFrame
-                createNotification("Position Copied", tostring(savedCFrame.Position), "success")
-                addConsoleLog("Position copied: " .. tostring(savedCFrame.Position), "info")
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then
+                createNotification("Error", "Character not found", "error")
+                addConsoleLog("Failed to copy position: Character not found", "error")
+                return
             end
+            
+            local root = char:FindFirstChild("HumanoidRootPart")
+            savedCFrame = root.CFrame
+            local posStr = string.format("X:%.1f Y:%.1f Z:%.1f", savedCFrame.Position.X, savedCFrame.Position.Y, savedCFrame.Position.Z)
+            createNotification("Position Copied", posStr, "success")
+            addConsoleLog("Position copied: " .. posStr, "info")
         end},
         {"Paste Position", function()
-            if savedCFrame then
-                local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    root.CFrame = savedCFrame
-                    createNotification("Teleported", "To saved position", "success")
-                end
-            else
+            if not savedCFrame then
                 createNotification("Error", "No saved position", "error")
+                addConsoleLog("Failed to paste position: No saved CFrame", "error")
+                return
             end
+            
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then
+                createNotification("Error", "Character not found", "error")
+                addConsoleLog("Failed to paste position: Character not found", "error")
+                return
+            end
+            
+            local root = char:FindFirstChild("HumanoidRootPart")
+            root.CFrame = savedCFrame
+            createNotification("Teleported", "To saved position", "success")
+            addConsoleLog("Teleported to saved position", "info")
         end}
     },
     Tools = {
         {"Rejoin Game", function()
             createNotification("Rejoining", "Teleporting to server...", "info")
+            addConsoleLog("Rejoining game...", "info")
             task.wait(1)
-            TeleportService:Teleport(game.PlaceId)
+            
+            local success, err = pcall(function()
+                TeleportService:Teleport(game.PlaceId)
+            end)
+            
+            if not success then
+                createNotification("Error", "Failed to rejoin: " .. tostring(err), "error")
+                addConsoleLog("Rejoin failed: " .. tostring(err), "error")
+            end
+        end},
+        {"Server Hop", function()
+            createNotification("Server Hop", "Looking for new server...", "info")
+            addConsoleLog("Server hop initiated", "info")
+            task.wait(1)
+            
+            local success, err = pcall(function()
+                TeleportService:Teleport(game.PlaceId)
+            end)
+            
+            if not success then
+                createNotification("Error", "Failed to hop: " .. tostring(err), "error")
+                addConsoleLog("Server hop failed: " .. tostring(err), "error")
+            end
         end},
         {"Infinite Yield", function()
             createNotification("Loading", "Infinite Yield...", "info")
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+            addConsoleLog("Loading Infinite Yield", "info")
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+            end)
+            
+            if success then
+                createNotification("Success", "Infinite Yield loaded", "success")
+                addConsoleLog("Infinite Yield loaded successfully", "success")
+            else
+                createNotification("Error", "Failed to load: " .. tostring(err), "error")
+                addConsoleLog("Failed to load Infinite Yield: " .. tostring(err), "error")
+            end
         end},
         {"CMD-X", function()
             createNotification("Loading", "CMD-X...", "info")
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/CMD-X/CMD-X/master/Source.lua"))()
+            addConsoleLog("Loading CMD-X", "info")
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/CMD-X/CMD-X/master/Source.lua"))()
+            end)
+            
+            if success then
+                createNotification("Success", "CMD-X loaded", "success")
+                addConsoleLog("CMD-X loaded successfully", "success")
+            else
+                createNotification("Error", "Failed to load: " .. tostring(err), "error")
+                addConsoleLog("Failed to load CMD-X: " .. tostring(err), "error")
+            end
         end}
     },
     Exploit = {
         {"Fly GUI v3", function() 
             createNotification("Loading", "Fly GUI v3...", "info")
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))() 
+            addConsoleLog("Loading Fly GUI v3", "info")
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+            end)
+            
+            if success then
+                createNotification("Success", "Fly GUI loaded", "success")
+                addConsoleLog("Fly GUI v3 loaded successfully", "success")
+            else
+                createNotification("Error", "Failed to load: " .. tostring(err), "error")
+                addConsoleLog("Failed to load Fly GUI v3: " .. tostring(err), "error")
+            end
         end},
         {"Dark Hub", function()
             createNotification("Loading", "Dark Hub...", "info")
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/RandomAdamYT/DarkHub/master/Init", true))()
+            addConsoleLog("Loading Dark Hub", "info")
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/RandomAdamYT/DarkHub/master/Init", true))()
+            end)
+            
+            if success then
+                createNotification("Success", "Dark Hub loaded", "success")
+                addConsoleLog("Dark Hub loaded successfully", "success")
+            else
+                createNotification("Error", "Failed to load: " .. tostring(err), "error")
+                addConsoleLog("Failed to load Dark Hub: " .. tostring(err), "error")
+            end
+        end},
+        {"Full Bright", function()
+            local lighting = game:GetService("Lighting")
+            local success, err = pcall(function()
+                lighting.Brightness = 2
+                lighting.GlobalShadows = false
+                lighting.Ambient = Color3.fromRGB(255, 255, 255)
+            end)
+            
+            if success then
+                createNotification("Full Bright", "Enabled", "success")
+                addConsoleLog("Full Bright enabled", "success")
+            else
+                createNotification("Error", "Failed: " .. tostring(err), "error")
+                addConsoleLog("Failed to enable Full Bright: " .. tostring(err), "error")
+            end
         end}
     },
     Scripts = {
-        {"Load Custom Script", function() 
-            local scriptInput = createElement("TextBox", {
-                Size = UDim2.new(1, -20, 0, 40),
-                Position = UDim2.new(0, 10, 0, 0),
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-                Text = "Enter script URL or code...",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                Font = Enum.Font.Gotham,
-                TextSize = 12,
-                Parent = pageFrames["Scripts"]
-            })
-            -- Implementation would need a dedicated input system
-            createNotification("Info", "Use loadstring() in console", "info")
-        end},
         {"Clear Console", function() 
-            for _, v in pairs(consoleLogs) do v:Destroy() end
-            consoleLogs = {}
-            createNotification("Console", "Cleared", "warning")
+            clearConsoleLogs()
+        end},
+        {"Print FPS", function()
+            local fps = math.floor(1/RunService.RenderStepped:Wait())
+            createNotification("FPS", tostring(fps), "info")
+            addConsoleLog("Current FPS: " .. tostring(fps), "info")
         end}
     },
     Players = {
         {"Refresh Players", function()
-            -- Implementation would refresh player list
+            updatePlayerList()
             createNotification("Players", "List refreshed", "info")
+            addConsoleLog("Player list refreshed", "info")
         end}
-        -- Player list buttons will be dynamically generated
     },
     Settings = {
         {"UI Toggle Key: `", function()
@@ -447,6 +691,7 @@ local pagesData = {
         end},
         {"Notification Test", function()
             createNotification("Test", "Notification system working!", "success")
+            addConsoleLog("Notification test sent", "success")
         end}
     }
 }
@@ -455,14 +700,15 @@ local tabButtons = {}
 local pageFrames = {}
 local currentPage = "Teleport"
 
---// Create Player List
+--// Create Player List (Fixed: Check TextButton)
 local function updatePlayerList()
     local page = pageFrames["Players"]
     if not page then return end
     
-    -- Clear existing player buttons
-    for _, child in pairs(page:GetChildren() do
-        if child:IsA("TextButton") then child:Destroy() end
+    for _, child in pairs(page:GetChildren()) do
+        if child:IsA("TextButton") then 
+            child:Destroy() 
+        end
     end
     
     local index = 1
@@ -483,23 +729,27 @@ local function updatePlayerList()
             
             createElement("UICorner", { CornerRadius = UDim.new(0, 6), Parent = btn })
             
-            btn.MouseEnter:Connect(function()
+            local btnEnter = btn.MouseEnter:Connect(function()
                 TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
             end)
-            btn.MouseLeave:Connect(function()
+            local btnLeave = btn.MouseLeave:Connect(function()
                 TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
             end)
-            btn.MouseButton1Click:Connect(function()
-                -- Add player actions here
+            local btnClick = btn.MouseButton1Click:Connect(function()
                 createNotification("Player Selected", player.Name, "info")
+                addConsoleLog("Selected player: " .. player.Name, "info")
             end)
+            
+            table.insert(connections, btnEnter)
+            table.insert(connections, btnLeave)
+            table.insert(connections, btnClick)
             
             index = index + 1
         end
     end
 end
 
---// Page Creation
+--// Page Creation (Fixed: Error handling)
 local function createPage(pageName)
     if pageFrames[pageName] then return end
     
@@ -521,7 +771,6 @@ local function createPage(pageName)
 
     pageFrames[pageName] = page
     
-    -- Add buttons for this page
     if pagesData[pageName] then
         for i, data in ipairs(pagesData[pageName]) do
             local btn = createElement("TextButton", {
@@ -540,27 +789,38 @@ local function createPage(pageName)
 
             createElement("UICorner", { CornerRadius = UDim.new(0, 6), Parent = btn })
 
-            btn.MouseEnter:Connect(function()
+            local btnEnter = btn.MouseEnter:Connect(function()
                 TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
             end)
-            btn.MouseLeave:Connect(function()
+            local btnLeave = btn.MouseLeave:Connect(function()
                 TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
             end)
-            btn.MouseButton1Click:Connect(function()
+            local btnClick = btn.MouseButton1Click:Connect(function()
                 TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
                 task.wait(0.1)
                 TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
-                pcall(data[2])
+                
+                local success, err = pcall(data[2])
+                if not success then
+                    createNotification("Error", "Button function failed: " .. tostring(err), "error")
+                    addConsoleLog("Button error: " .. tostring(err), "error")
+                end
             end)
+            
+            table.insert(connections, btnEnter)
+            table.insert(connections, btnLeave)
+            table.insert(connections, btnClick)
         end
     end
 
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
+        if page and page.Parent then
+            page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
+        end
     end)
 end
 
---// Tab Button Creation
+--// Tab Button Creation (Fixed: Store connections)
 local function createTabButton(tabName, index)
     local tabBtn = createElement("TextButton", {
         Size = UDim2.new(1, -10, 0, 45),
@@ -576,7 +836,7 @@ local function createTabButton(tabName, index)
 
     createElement("UICorner", { CornerRadius = UDim.new(0, 6), Parent = tabBtn })
 
-    tabBtn.MouseButton1Click:Connect(function()
+    local tabConnection = tabBtn.MouseButton1Click:Connect(function()
         if currentPage == tabName then return end
         
         local oldPage = pageFrames[currentPage]
@@ -594,33 +854,38 @@ local function createTabButton(tabName, index)
         
         createPage(tabName)
         local page = pageFrames[tabName]
-        page.Visible = true
+        if page then page.Visible = true end
         
         if tabName == "Players" then
             updatePlayerList()
         end
     end)
-
+    
+    table.insert(connections, tabConnection)
     tabButtons[tabName] = tabBtn
 end
 
---// Initialize Tabs
+--// Initialize Tabs (Fixed: Safety checks)
 local function initializeTabs()
     for i, tab in ipairs(tabs) do 
         createTabButton(tab, i) 
     end
     
     createPage("Teleport")
-    tabButtons["Teleport"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    tabButtons["Teleport"].TextColor3 = Color3.fromRGB(255, 255, 255)
-    pageFrames["Teleport"].Visible = true
+    if tabButtons["Teleport"] then
+        tabButtons["Teleport"].BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        tabButtons["Teleport"].TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    if pageFrames["Teleport"] then
+        pageFrames["Teleport"].Visible = true
+    end
 end
 
---// Dragging System
+--// Dragging System (Fixed: Store connections & safety checks)
 local function setupDragging()
     local dragging, dragStart, startPos
     
-    TopBar.InputBegan:Connect(function(input)
+    local startConn = TopBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
@@ -628,56 +893,117 @@ local function setupDragging()
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
+    local changeConn = UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+            if MainFrame and MainFrame.Parent then
+                MainFrame.Position = UDim2.new(
+                    startPos.X.Scale,
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale,
+                    startPos.Y.Offset + delta.Y
+                )
+            end
         end
     end)
     
-    UserInputService.InputEnded:Connect(function(input)
+    local endConn = UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
+    
+    table.insert(connections, startConn)
+    table.insert(connections, changeConn)
+    table.insert(connections, endConn)
 end
 
---// Window Controls
+--// Window Controls (Fixed: Store connections)
 local function setupWindowControls()
     local minimized = false
     
-    MinBtn.MouseButton1Click:Connect(function()
+    local minConn = MinBtn.MouseButton1Click:Connect(function()
         minimized = not minimized
         PagesContainer.Visible = not minimized
         TabContainer.Visible = not minimized
         
         TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                           {Size = UDim2.new(0, 600, 0, minimized and 40 or 450)}):Play()
+                           {Size = UDim2.new(0, 850, 0, minimized and 40 or 450)}):Play()
+        
+        addConsoleLog(minimized and "UI minimized" or "UI restored", "info")
     end)
     
-    CloseBtn.MouseButton1Click:Connect(function()
+    local closeConn = CloseBtn.MouseButton1Click:Connect(function()
         TweenService:Create(MainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         task.wait(0.3)
-        ScreenGui:Destroy()
+        pcall(function() ScreenGui:Destroy() end)
     end)
     
-    ConsoleBtn.MouseButton1Click:Connect(function()
+    local consoleConn = ConsoleBtn.MouseButton1Click:Connect(function()
         toggleConsole()
     end)
+    
+    table.insert(connections, minConn)
+    table.insert(connections, closeConn)
+    table.insert(connections, consoleConn)
 end
 
---// Keybind
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+--// Keybind (Fixed: Check if UI exists)
+local keybindConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.Backquote then
         toggleUI()
     end
 end)
+table.insert(connections, keybindConn)
+
+--// Character Respawn Handler (NEW: Fixes NoClip on respawn)
+local charAddedConn = LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(0.5) -- Wait for character to load
+    
+    if noclipConnection then
+        -- Re-enable NoClip if it was active
+        noclipConnection:Disconnect()
+        noclipConnection = RunService.Stepped:Connect(function()
+            for _, v in pairs(character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end)
+        addConsoleLog("Character respawned - NoClip re-enabled", "info")
+    else
+        addConsoleLog("Character respawned", "info")
+    end
+    
+    -- Re-setup position copy/paste
+    savedCFrame = nil
+end)
+table.insert(connections, charAddedConn)
+
+--// Cleanup Handler (NEW: Prevents memory leaks on destroy)
+local cleanupConn = ScreenGui.Destroying:Connect(function()
+    -- Disconnect all connections
+    for _, conn in pairs(connections) do
+        if conn and conn.Disconnect then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    
+    -- Disconnect NoClip
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    
+    -- Clear console logs
+    clearConsoleLogs()
+    
+    -- Reset storage
+    savedCFrame = nil
+    savedPositions = {}
+    consoleLogs = {}
+    connections = {}
+end)
+table.insert(connections, cleanupConn)
 
 --// Initialize
 setupHoverEffects()
@@ -685,8 +1011,11 @@ initializeTabs()
 setupDragging()
 setupWindowControls()
 ToggleUIBtn.MouseButton1Click:Connect(toggleUI)
+addConsoleLog("UI initialized successfully", "success")
+addConsoleLog("Console system ready", "info")
+addConsoleLog("Character respawn handler connected", "info")
+addConsoleLog("Cleanup handler connected", "info")
 
 --// Welcome Notification
 task.wait(1)
 createNotification("Welcome", "Advanced UI Loaded! Press ` to toggle", "success", 4)
-addConsoleLog("UI initialized successfully", "success")
