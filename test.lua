@@ -1,5 +1,5 @@
 --// ===================================================================
---// OPTIMIZED ADVANCED TOOL UI
+--// ADVANCED TOOL UI รุ่นที่ 1.1 (แก้ไขและเพิ่มความสามารถ)
 --// ===================================================================
 
 local Players = game:GetService("Players")
@@ -27,7 +27,7 @@ local CONFIG = {
     AutoSave = true
 }
 
---// SIMPLIFIED UTILITIES
+--// UTILITY FUNCTIONS
 local Utilities = {
     SafeCall = function(callback, errorMessage)
         local success, result = pcall(callback)
@@ -49,7 +49,7 @@ local Utilities = {
     end
 }
 
---// SIMPLIFIED UI BUILDER
+--// UI BUILDER
 local function CreateMainUI()
     local mainGUI = Utilities.CreateInstance("ScreenGui", {
         Name = "AdvancedToolUI",
@@ -165,7 +165,7 @@ local function CreateMainUI()
     }
 end
 
---// SIMPLIFIED TAB SYSTEM
+--// TAB SYSTEM
 local function CreateTabSystem(tabContainer, contentContainer)
     local tabs = {}
     local currentTab = nil
@@ -252,7 +252,6 @@ local function CreateTabSystem(tabContainer, contentContainer)
             Parent = button
         })
         
-        -- Button interactivity
         button.MouseEnter:Connect(function()
             TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
         end)
@@ -265,7 +264,6 @@ local function CreateTabSystem(tabContainer, contentContainer)
             Utilities.SafeCall(callback, "Button action failed: " .. buttonText)
         end)
         
-        -- Auto-size page
         tabs[tabName].Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             page.CanvasSize = UDim2.new(0, 0, 0, tabs[tabName].Layout.AbsoluteContentSize.Y + 24)
         end)
@@ -276,13 +274,13 @@ local function CreateTabSystem(tabContainer, contentContainer)
         AddButton = AddButton,
         SwitchToTab = function(name)
             if tabs[name] then
-                tabs[name].Button:MouseButton1Click()
+                tabs[name].Button:MouseButton1Click:Fire() -- トリガーイベントを直接呼び出し
             end
         end
     }
 end
 
---// SIMPLIFIED FEATURES
+--// FEATURES
 local Features = {
     NoClip = {
         Enabled = false,
@@ -468,8 +466,6 @@ local function InitializeUI()
     
     print("⚡ Advanced Tool UI Loaded Successfully!")
     print("Press F9 or click the toggle button to show/hide")
-    
-    return ui
 end
 
 --// STARTUP
